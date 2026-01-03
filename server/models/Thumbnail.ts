@@ -63,7 +63,7 @@ const ThumbnailSchema = new mongoose.Schema<IThumbnail>({
     ],
   },
   text_overlay: { type: Boolean, default: false },
-  image_url: { type: String },
+  image_url: { type: String, default: "" },
   prompt_used: { type: String },
   user_prompt: { type: String },
   isGenerating: { type: Boolean, default: true },

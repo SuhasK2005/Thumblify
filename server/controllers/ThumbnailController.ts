@@ -64,7 +64,7 @@ export const generateThumbnail = async (req: Request, res: Response) => {
       isGenerating: true,
     });
 
-    const model = "gemini-2.5-flash-image";
+    const model = "gemini-3-pro-image-preview";
 
     const generationConfig: GenerateContentConfig = {
       maxOutputTokens: 32768,
@@ -111,6 +111,10 @@ export const generateThumbnail = async (req: Request, res: Response) => {
 
     prompt += ` The thumbnail should be ${aspect_ratio}, visually stunning, and designed to maximize click-through rate. Make it bold, professional, and impossible to ignore.`;
 
+    console.log("=== GENERATION REQUEST ===");
+    console.log("Prompt:", prompt);
+    console.log("Model:", model);
+
     // Generate the image using the GenAI
     const response: any = await ai.models.generateContent({
       model,
@@ -118,36 +122,101 @@ export const generateThumbnail = async (req: Request, res: Response) => {
       config: generationConfig,
     });
 
+    console.log("=== API RESPONSE ===");
+    console.log("Response structure:", JSON.stringify(response, null, 2));
+    console.log("Has candidates?", !!response?.candidates);
+    console.log("Candidates length:", response?.candidates?.length);
+
     if (!response?.candidates?.[0]?.content?.parts) {
-      throw new Error("Unexpected response");
+      console.error("ERROR: No parts found in response");
+      console.error("Full response:", JSON.stringify(response, null, 2));
+      throw new Error("Unexpected response structure - no parts found");
     }
+
     const parts = response.candidates[0].content.parts;
+    console.log("=== PARTS ANALYSIS ===");
+    console.log("Number of parts:", parts.length);
 
     let finalBuffer: Buffer | null = null;
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      console.log(`Part ${i}:`, Object.keys(part));
+
+      if (part.text) {
+        console.log(`  - Text content: ${part.text.substring(0, 100)}...`);
+      }
+
       if (part.inlineData) {
+        console.log(`  - InlineData found!`);
+        console.log(`  - MimeType: ${part.inlineData.mimeType}`);
+        console.log(
+          `  - Data length: ${part.inlineData.data?.length || 0} chars`
+        );
         finalBuffer = Buffer.from(part.inlineData.data, "base64");
+        console.log(`  - Buffer size: ${finalBuffer.length} bytes`);
+        break;
+      }
+
+      if (part.image) {
+        console.log(`  - Image data found!`);
+        finalBuffer = Buffer.from(part.image.data, "base64");
+        console.log(`  - Buffer size: ${finalBuffer.length} bytes`);
+        break;
       }
     }
 
+    if (!finalBuffer) {
+      console.error("ERROR: No image data found in any part");
+      console.error("All parts:", JSON.stringify(parts, null, 2));
+      throw new Error(
+        "No image data generated - model may have returned text instead"
+      );
+    }
+
+    console.log("=== FILE OPERATIONS ===");
     const filename = `final-output-${Date.now()}.png`;
     const filePath = path.join("images", filename);
+    console.log("Saving to:", filePath);
 
     fs.mkdirSync("images", { recursive: true });
-    fs.writeFileSync(filePath, finalBuffer!);
+    fs.writeFileSync(filePath, finalBuffer);
+    console.log("File saved successfully");
 
+    console.log("=== CLOUDINARY UPLOAD ===");
     const uploadResult = await cloudinary.uploader.upload(filePath, {
       resource_type: "image",
     });
-    thumbnail.imageUrl = uploadResult.url;
+    console.log("Cloudinary URL:", uploadResult.url);
+
+    thumbnail.image_url = uploadResult.url;
     thumbnail.isGenerating = false;
     await thumbnail.save();
 
     res.json({ message: "Thumbnail Generated", thumbnail });
 
     fs.unlinkSync(filePath);
+    console.log("=== SUCCESS ===");
   } catch (error: any) {
-    console.log(error);
+    console.error("=== ERROR ===");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+
+    // Try to update thumbnail error state
+    try {
+      const { userId } = req.session;
+      const failedThumbnail = await Thumbnail.findOne({
+        userId,
+        isGenerating: true,
+      }).sort({ createdAt: -1 });
+
+      if (failedThumbnail) {
+        failedThumbnail.isGenerating = false;
+        await failedThumbnail.save();
+      }
+    } catch (updateError) {
+      console.error("Failed to update thumbnail state:", updateError);
+    }
+
     res.status(500).json({ message: error.message });
   }
 };
