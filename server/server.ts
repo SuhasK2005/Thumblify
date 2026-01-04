@@ -20,7 +20,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://thumblify-olive.vercel.app",
+    ],
     credentials: true,
   })
 );
@@ -44,9 +48,9 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Server is Live!");
 });
 
-app.use('/api/auth', AuthRouter)
-app.use('/api/thumbnail', ThumbnailRouter)
-app.use('/api/user', UserRouter)
+app.use("/api/auth", AuthRouter);
+app.use("/api/thumbnail", ThumbnailRouter);
+app.use("/api/user", UserRouter);
 
 const port = process.env.PORT || 3000;
 
