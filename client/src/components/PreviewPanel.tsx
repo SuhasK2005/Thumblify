@@ -1,4 +1,3 @@
-import { div } from "motion/react-client";
 import type { AspectRatio, IThumbnail } from "../assets/assets";
 import { DownloadIcon, ImageIcon, Loader2Icon } from "lucide-react";
 
@@ -19,7 +18,14 @@ const PreviewPanel = ({
 
   const onDownload = () => {
     if (!thumbnail?.image_url) return;
-    window.open(thumbnail.image_url, "_blank");
+    const link = document.createElement("a");
+    link.href = thumbnail?.image_url.replace(
+      "/upload",
+      "/upload/fl_attachment"
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   return (

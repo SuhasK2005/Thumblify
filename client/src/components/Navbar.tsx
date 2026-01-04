@@ -52,7 +52,7 @@ export default function Navbar() {
               <button className="rounded-full size-8 bg-white/20 border-2 border-white/10">
                 {user?.name.charAt(0).toUpperCase()}
               </button>
-              <div className="absolute hidden:group-hover:block top-6 right-0 pt-4">
+              <div className="absolute hidden group-hover:block top-6 right-0 pt-4">
                 <button
                   onClick={() => logout()}
                   className="bg-white/20 border-2 border-white/10 px-5 py-1.5 rounded"
@@ -69,11 +69,11 @@ export default function Navbar() {
               Get Started
             </button>
           )}
-        </div>
-
         <button onClick={() => setIsOpen(true)} className="md:hidden">
           <MenuIcon size={26} className="active:scale-90 transition" />
         </button>
+        </div>
+
       </motion.nav>
 
       <div
