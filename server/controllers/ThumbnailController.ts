@@ -57,6 +57,7 @@ export const generateThumbnail = async (req: Request, res: Response) => {
       userId,
       title,
       prompt_used: user_prompt,
+      user_prompt: user_prompt,
       style,
       aspect_ratio,
       color_scheme,
